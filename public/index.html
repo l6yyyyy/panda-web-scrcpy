@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panda Web Scrcpy</title>
+<title>LY Web Scrcpy</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#1e1e2e;color:#fff;padding:20px;font-family:system-ui}
@@ -19,25 +19,48 @@ button:hover{background:#6a4bee}
 </head>
 <body>
 <div class="container">
-<div class="title">Panda Web Scrcpy 安卓网页控制</div>
+<div class="title">LY Web Scrcpy 安卓远程控制</div>
 <div class="card">
-<input id="ip" placeholder="输入设备IP，例如 192.168.1.100">
-<button onclick="connect()">连接设备</button>
+<input id="ip" placeholder="输入设备IP:端口 例如 192.168.1.100:5555">
+<button onclick="connectDevice()">连接设备</button>
 <div class="log" id="log"></div>
 <video id="video" autoplay playsinline></video>
 </div>
 </div>
+
 <script>
 let ws;
-function connect(){
-const ip=document.getElementById('ip').value;
-if(!ip)return alert('请输入IP');
-ws=new WebSocket(`ws://${location.host}`);
-ws.onopen=()=>{ws.send(JSON.stringify({type:'connect',ip:ip}))};
-ws.onmessage=(e)=>{
-const d=JSON.parse(e.data);
-document.getElementById('log').innerText=d.text||'';
-};
+function connectDevice() {
+  const ip = document.getElementById('ip').value;
+  if (!ip) {
+    alert("请输入设备IP和端口");
+    return;
+  }
+  setLog("正在连接：" + ip);
+
+  ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = function() {
+    setLog("WebSocket 已连接");
+    ws.send(JSON.stringify({ type: 'connect', ip: ip }));
+  };
+  ws.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    if (data.type === 'status') {
+      setLog(data.text);
+    } else if (data.type === 'error') {
+      setLog("错误：" + data.text);
+    }
+  };
+  ws.onclose = function() {
+    setLog("连接关闭");
+  };
+  ws.onerror = function() {
+    setLog("连接失败，请检查IP、端口、ADB权限");
+  };
+}
+
+function setLog(text) {
+  document.getElementById('log').innerText = text;
 }
 </script>
 </body>
