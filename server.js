@@ -1,45 +1,33 @@
 const express = require('express');
 const WebSocket = require('ws');
-const adb = require('adbkit');
 const { spawn } = require('child_process');
 const path = require('path');
-
 const app = express();
 const PORT = 8080;
 
-app.use(express.static(path.join(__dirname, 'public')));
-const client = adb.createClient();
+app.use(express.static(path.join(__dirname,'public')));
 
-const wss = new WebSocket.Server({ noServer: true });
-
+const wss = new WebSocket.Server({ port: 8081 });
 wss.on('connection', (ws) => {
-  ws.on('message', async (data) => {
+  console.log("客户端已连接");
+  ws.on('message', (data) => {
     try {
       const msg = JSON.parse(data);
-      if (msg.type === 'connect') {
-        await client.connect(msg.ip, 5555);
-        ws.send(JSON.stringify({ type: 'status', text: '设备连接成功' }));
+      if (msg.action === "connect" && msg.ip) {
+        ws.send(JSON.stringify({text:"尝试连接："+msg.ip}));
 
-        const scrcpy = spawn('scrcpy', [
-          '--serial', msg.ip, '--no-window', '--video-codec=vp8', '--port=0'
-        ]);
-
-        scrcpy.stdout.on('data', (d) => {
-          ws.send(JSON.stringify({ type: 'stream', data: d.toString('base64') }));
+        const adb = spawn("adb", ["connect", msg.ip]);
+        adb.stdout.on("data", (d) => {
+          ws.send(JSON.stringify({text:"ADB: "+d}));
+        });
+        adb.stderr.on("data", (d) => {
+          ws.send(JSON.stringify({error:"错误："+d}));
         });
       }
-    } catch (e) {
-      ws.send(JSON.stringify({ type: 'error', text: '连接失败：' + e.message }));
-    }
+    } catch(e) {}
   });
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
-
-server.on('upgrade', (req, sock, head) => {
-  wss.handleUpgrade(req, sock, head, (ws) => {
-    wss.emit('connection', ws, req);
-  });
+app.listen(PORT, ()=>{
+  console.log("Web服务：http://localhost:"+PORT);
 });
