@@ -4,29 +4,34 @@
 <meta charset="utf-8">
 <title>Panda Web Scrcpy</title>
 <style>
-  body{background:#111;color:#fff;padding:20px}
-  #video{width:100%;max-width:800px;background:#000;border-radius:10px}
-  input,button{padding:12px;width:100%;margin:5px 0;border-radius:8px;border:0}
-  input{background:#222;color:white}
-  button{background:#7c3aed}
+body{background:#111;color:#fff;padding:20px}
+#video{width:100%;max-width:800px;background:#000;border-radius:10px}
+input,button{padding:12px;width:100%;margin:5px 0;border-radius:8px;border:0}
+input{background:#222;color:white}
+button{background:#7c3aed;color:white}
 </style>
 </head>
 <body>
-<input id="ip" placeholder="192.168.1.5:38521">
+<input id="ip" placeholder="输入IP:端口">
 <button onclick="connect()">连接并显示画面</button>
-<video id="video" autoplay></video>
+<video id="video" autoplay muted></video>
 
 <script>
-const ws = new WebSocket('ws://' + location.host);
+const ws = new WebSocket("ws://"+location.host);
 const video = document.getElementById('video');
+const mediaSource = new MediaSource();
+video.srcObject = mediaSource;
 
 function connect() {
-  ws.send(JSON.stringify({ action: 'connect', ip: document.getElementById('ip').value }));
+  ws.send(JSON.stringify({
+    action: "connect",
+    ip: document.getElementById('ip').value
+  }));
 }
 
 ws.onmessage = (e) => {
-  if (e.data instanceof Blob) {
-    video.srcObject = new MediaSource();
+  if (e.data instanceof ArrayBuffer) {
+    console.log("视频流接收中...");
   }
 };
 </script>
