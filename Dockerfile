@@ -2,12 +2,8 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt update && apt install -y --no-install-recommends \
-    adb \
-    scrcpy \
-    nodejs \
-    npm \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
+    adb scrcpy nodejs npm net-tools iproute2 \
+    && apt clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY . .
