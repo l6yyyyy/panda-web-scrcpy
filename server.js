@@ -1,54 +1,43 @@
 const express = require('express');
-const WebSocket = require('ws');
 const { spawn } = require('child_process');
+const http = require('http');
+const WebSocket = require('ws');
 const path = require('path');
+
 const app = express();
-const PORT = 8080;
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 真实家用局域网网段（不会再扫 172.17.0.x）
-function scanRealLAN() {
-  const ips = [];
-  for (let i = 2; i < 255; i++) {
-    ips.push(`192.168.1.${i}`);
-    ips.push(`192.168.0.${i}`);
-    ips.push(`192.168.10.${i}`);
-  }
-  return ips;
-}
-
-const wss = new WebSocket.Server({ port: 8081 });
 wss.on('connection', (ws) => {
+  console.log('客户端已连接');
+
   ws.on('message', (data) => {
-    try {
-      const msg = JSON.parse(data);
+    const msg = JSON.parse(data);
 
-      // 扫描真实设备
-      if (msg.action === 'scan') {
-        ws.send(JSON.stringify({ text: '正在扫描局域网…' }));
-        const lanList = scanRealLAN();
-        lanList.forEach(ip => {
-          const adb = spawn('adb', ['connect', ip + ':5555']);
-          adb.on('close', () => {
-            ws.send(JSON.stringify({ action: 'deviceFound', ip: ip }));
-          });
-        });
-      }
+    // 手动连接 + 启动画面
+    if (msg.action === 'connect' && msg.ip) {
+      ws.send(JSON.stringify({ text: '连接：' + msg.ip }));
 
-      // 真实连接
-      if (msg.action === 'connect' && msg.ip) {
-        ws.send(JSON.stringify({ text: '正在连接：' + msg.ip }));
-        const adb = spawn('adb', ['connect', msg.ip]);
-        adb.stdout.on('data', (out) => {
-          ws.send(JSON.stringify({ text: '✅ ' + out.toString().trim() }));
-        });
-        adb.stderr.on('data', (err) => {
-          ws.send(JSON.stringify({ text: '❌ 失败：' + err.toString().trim() }));
-        });
-      }
-    } catch (e) {}
+      // 连接 ADB
+      spawn('adb', ['connect', msg.ip]);
+
+      // 启动 scrcpy 视频流
+      const scrcpy = spawn('scrcpy', [
+        '--serial', msg.ip.split(':')[0],
+        '--no-audio',
+        '--video', 'stdout',
+        '--max-size', '800'
+      ]);
+
+      scrcpy.stdout.on('data', (stream) => {
+        ws.send(stream); // 发送视频流到前端
+      });
+    }
   });
 });
 
-app.listen(PORT, () => console.log('Web:' + PORT));
+server.listen(8080, () => {
+  console.log('Panda Web Scrcpy 启动：http://localhost:8080');
+});
