@@ -1,14 +1,9 @@
 {
-  "name": "panda-web-scrcpy",
+  "name": "web-scrcpy",
   "version": "1.0.0",
-  "description": "Web Android Control via scrcpy",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
   "dependencies": {
     "express": "^4.18.2",
-    "ws": "^8.14.2",
-    "adbkit": "^2.11.1"
+    "ws": "^8.14.2"
   }
 }
